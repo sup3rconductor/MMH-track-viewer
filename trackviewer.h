@@ -2,6 +2,7 @@
 #define TRACKVIEWER_H
 
 #include <QMainWindow>
+#include <QKeyEvent>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class TrackViewer; }
@@ -17,5 +18,14 @@ public:
 
 private:
     Ui::TrackViewer *ui;
+
+protected:
+    void keyPressEvent(QKeyEvent *e) override;
+
+private slots:
+    void event_switch();
+    void draw_dots();
+    void draw_reconstructed_track();
+
 };
 #endif // TRACKVIEWER_H
