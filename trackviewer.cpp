@@ -13,7 +13,9 @@
 int EventNum = -1;
 QVector<double> coord_mu[3];
 QVector<double> coord_charged[3];
-QVector<int> copyNumber;
+QVector<double> XZcoordinates[2]; //0 - x, 1 - z
+QVector<double> YZcoordinates[2]; //0 - y, 1 - z
+QVector<int> copyNumber, copyNumXZ, copyNumYZ;
 
 int Xvertices[1152] = {0};
 int Yvertices[1152] = {0};
@@ -35,16 +37,16 @@ TrackViewer::TrackViewer(QWidget *parent)
     ui->show_reconst->setCheckable(true);
 
     //Setting plots
-    ui->graph_1->xAxis->setRange(-500, 500);
+    ui->graph_1->xAxis->setRange(-492, 492);
     ui->graph_1->yAxis->setRange(-500, 500);
-    ui->graph_2->xAxis->setRange(-500, 500);
+    ui->graph_2->xAxis->setRange(-492, 492);
     ui->graph_2->yAxis->setRange(-500, 500);
 
-    //Убирает оси (дезигнерское решение)
+    /*//Убирает оси (дезигнерское решение)
     ui->graph_1->xAxis->setVisible(false);
     ui->graph_1->yAxis->setVisible(false);
     ui->graph_2->xAxis->setVisible(false);
-    ui->graph_2->yAxis->setVisible(false);
+    ui->graph_2->yAxis->setVisible(false);*/
 
     //Adding scenes
     XZ_scene = new QGraphicsScene();
@@ -93,7 +95,7 @@ void TrackViewer::strip_number_to_coords()
 {
     int number, x, y;
     std::ifstream data;
-    data.open("C:\\Users\\HYPERPC\\Documents\\MMH-track-viewer-ver-2.0\\strip_coords.dat", std::ios_base::in);
+    data.open("G:\\MMH-track-viewer-ver-2.0\\strip_coords.dat", std::ios_base::in);
 
     if(data.is_open())
     {
@@ -263,6 +265,19 @@ void ReadEventData(int num)
                 coord_charged[0].push_back(x);
                 coord_charged[1].push_back(y);
                 coord_charged[2].push_back(z);
+
+                //Getting particles coordinates to draw triggered strips
+                if((z >= -480 && z <= -473) || (z >= -472 && z <= -465) || (z >= 3 && z <= 10) || (z >= 11 && z <= 18) || (z >= 485 && z <= 492) || (z >= 493 && z <= 500))
+                {
+                    XZcoordinates[0].push_back(x);
+                    XZcoordinates[1].push_back(z);
+                }
+
+                else if((z >= -500 && z <= -493) || (z >= -492 && z <= -485) || (z >= -17 && z <= -10) || (z >= -9 && z <= -2) || (z >= 465 && z <= 472) || (z >= 473 && z <= 480))
+                {
+                    YZcoordinates[0].push_back(y);
+                    YZcoordinates[1].push_back(z);
+                }
             }
 
             //If it's muon - add coordinates to charged vectors
@@ -271,6 +286,19 @@ void ReadEventData(int num)
                 coord_mu[0].push_back(x);
                 coord_mu[1].push_back(y);
                 coord_mu[2].push_back(z);
+
+                //Getting particles coordinates to draw triggered strips
+                if((z >= -480 && z <= -473) || (z >= -472 && z <= -465) || (z >= 3 && z <= 10) || (z >= 11 && z <= 18) || (z >= 485 && z <= 492) || (z >= 493 && z <= 500))
+                {
+                    XZcoordinates[0].push_back(x);
+                    XZcoordinates[1].push_back(z);
+                }
+
+                else if((z >= -500 && z <= -493) || (z >= -492 && z <= -485) || (z >= -17 && z <= -10) || (z >= -9 && z <= -2) || (z >= 465 && z <= 472) || (z >= 473 && z <= 480))
+                {
+                    YZcoordinates[0].push_back(y);
+                    YZcoordinates[1].push_back(z);
+                }
             }
         }
     }
@@ -346,6 +374,7 @@ void TrackViewer::test_draw()
 
 }
 
+//Function to draw triggered strips
 void TrackViewer::draw_strips()
 {
     QPolygon STRP[1152];
@@ -356,31 +385,98 @@ void TrackViewer::draw_strips()
     QPen pen;
 
     brush.setColor(Qt::gray);
-    brush.setStyle(Qt::SolidPattern);
-    pen.setColor(Qt::black);
+    brush.setStyle(Qt::NoBrush);
+    pen.setColor(Qt::green);
 
-        for(auto i = 0; i < copyNumber.size(); i++)
+        for(auto i = 0; i < copyNumXZ.size(); i++)
         {
-            N = copyNumber[i];
+            N = copyNumXZ[i];
             x = Xvertices[N];
             y = Yvertices[N];
 
             STRP[i] << QPoint(x, y) << QPoint(x + 10, y) << QPoint(x + 10, y + 7) << QPoint(x, y + 7);
+            XZ_new_scene->addPolygon(STRP[i], pen, brush);
+        }
 
-            //XZ
-            if((N >= 192 && N <= 383) || (N >= 576 && N <= 767) || (N >= 960 && N <= 1151))
+        for(auto i = 0; i < copyNumYZ.size(); i++)
+        {
+            N = copyNumYZ[i];
+            x = Xvertices[N];
+            y = Yvertices[N];
+
+            STRP[i] << QPoint(x, y) << QPoint(x + 10, y) << QPoint(x + 10, y + 7) << QPoint(x, y + 7);
+            YZ_new_scene->addPolygon(STRP[i], pen, brush);
+        }
+
+}
+
+//Get copy numbers of triggered strips
+void TrackViewer::GetCopyNumber()
+{
+        double Zpt, Xpt;
+        double x_left, x_right;
+        int plain_num = 0, cp;
+        double x_min = 0, x_max = 0;
+        int MinCopy[12] = {  0, 96, 192, 288, 384, 480, 576, 672, 768, 864, 960, 1056};
+        int MaxCopy[12] = {95, 191, 287, 383, 479, 575, 671, 767, 863, 959, 1055, 1151};
+        double Xmin[12] = {-492., -487., -492., -487., -492., -487., -492., -487., -492., -487., -492., -487.};
+        double Xmax[12] = {468., 473., 468., 473., 468., 473., 468., 473., 468., 473., 468., 473.};
+
+        //Filling for XZ
+        for(auto i = 0; i < XZcoordinates[1].size(); i++)
+        {
+            Zpt = XZcoordinates[1][i];
+            Xpt = XZcoordinates[0][i];
+
+            if(Zpt >= -500 && Zpt <= -493) plain_num = 0;         //1
+            else if(Zpt >= -492 && Zpt <= -485) plain_num = 1;    //2
+            else if(Zpt >= -17 && Zpt <= -10) plain_num = 4;      //5
+            else if(Zpt >= -9 && Zpt <= -2) plain_num = 5;        //6
+            else if(Zpt >= 465 && Zpt <= 472) plain_num = 8;      //9
+            else if(Zpt >= 473 && Zpt <= 480) plain_num = 9;      //10
+
+            cp = MinCopy[plain_num];
+            x_min = Xmin[plain_num], x_max = Xmax[plain_num];
+            x_left = x_min, x_right = x_min + 10;
+            if(Xpt > x_min && Xpt < x_max)
             {
-                XZ_new_scene->addPolygon(STRP[i], pen, brush);
-            }
-
-
-            //YZ
-            else if((N >= 0 && i <= 191) || (N >= 384 && N <= 575) || (N >= 768 && N <= 959))
-            {
-                YZ_new_scene->addPolygon(STRP[i], pen, brush);
+                while(!(Xpt >= x_left && Xpt <= x_right)  && (cp <= MaxCopy[plain_num]))
+                {
+                    x_left += 10;
+                    x_right += 10;
+                    cp++;
+                }
+                copyNumXZ.push_back(cp);
             }
         }
 
+        //Filling for YZ
+        for(auto i = 0; i < YZcoordinates[1].size(); i++)
+        {
+            Zpt = YZcoordinates[1][i];
+            Xpt = YZcoordinates[0][i];
+
+            if(Zpt >= -480 && Zpt <= -473) plain_num = 2;         //3
+            else if(Zpt >= -472 && Zpt <= -465) plain_num = 3;    //4
+            else if(Zpt >= 3 && Zpt <= 10) plain_num = 6;         //7
+            else if(Zpt >= 11 && Zpt <= 18) plain_num = 7;        //8
+            else if(Zpt >= 485 && Zpt <= 492) plain_num = 10;     //11
+            else if(Zpt >= 493 && Zpt <= 500) plain_num = 11;     //12
+
+            cp = MinCopy[plain_num];
+            x_min = Xmin[plain_num], x_max = Xmax[plain_num];
+            x_left = x_min, x_right = x_min + 10;
+            if(Xpt > x_min && Xpt < x_max)
+            {
+                while(!(Xpt >= x_left && Xpt <= x_right) && (cp <= MaxCopy[plain_num]))
+                {
+                    x_left += 10;
+                    x_right += 10;
+                    cp++;
+                }
+                copyNumYZ.push_back(cp);
+            }
+        }
 }
 
 //Show next or previous event
@@ -400,10 +496,15 @@ void TrackViewer::event_switch()
             coord_mu[i].clear();
             coord_charged[i].clear();
         }
+        XZcoordinates[0].clear();
+        XZcoordinates[1].clear();
         copyNumber.clear();
+        copyNumXZ.clear();
+        copyNumYZ.clear();
 
         ReadEventData(EventNum);
         draw_dots();
+        GetCopyNumber();
         draw_strips();
         ui->Prev_ev->setChecked(true);
     }
@@ -421,10 +522,15 @@ void TrackViewer::event_switch()
             coord_mu[i].clear();
             coord_charged[i].clear();
         }
+        XZcoordinates[0].clear();
+        XZcoordinates[1].clear();
         copyNumber.clear();
+        copyNumXZ.clear();
+        copyNumYZ.clear();
 
         ReadEventData(EventNum);
         draw_dots();
+        GetCopyNumber();
         draw_strips();
         ui->Next_ev->setChecked(true);
     }
@@ -435,7 +541,6 @@ void TrackViewer::event_switch()
     ui->Prev_ev->setChecked(false);
     ui->Next_ev->setChecked(false);
 }
-
 
 //Drawing cooordinates of partices in MMH
 void TrackViewer::draw_dots()
@@ -449,14 +554,14 @@ void TrackViewer::draw_dots()
     ui->graph_1->graph(0)->setData(coord_mu[0], coord_mu[2]);
     ui->graph_1->graph(0)->setPen(QPen(Qt::red));
     ui->graph_1->graph(0)->setLineStyle(QCPGraph::lsNone);
-    ui->graph_1->graph(0)->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssDisc, 4));
+    ui->graph_1->graph(0)->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssDisc, 3));
 
     //Add charged points (upper graph)
     ui->graph_1->addGraph();
     ui->graph_1->graph(1)->setData(coord_charged[0], coord_charged[2]);
     ui->graph_1->graph(1)->setPen(QPen(Qt::blue));
     ui->graph_1->graph(1)->setLineStyle(QCPGraph::lsNone);
-    ui->graph_1->graph(1)->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssDisc, 4));
+    ui->graph_1->graph(1)->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssDisc, 3));
 
     ui->graph_1->replot();
 
@@ -465,14 +570,14 @@ void TrackViewer::draw_dots()
     ui->graph_2->graph(0)->setData(coord_mu[1], coord_mu[2]);
     ui->graph_2->graph(0)->setPen(QPen(Qt::red));
     ui->graph_2->graph(0)->setLineStyle(QCPGraph::lsNone);
-    ui->graph_2->graph(0)->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssDisc, 4));
+    ui->graph_2->graph(0)->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssDisc, 3));
 
     //Add charged points (lower graph)
     ui->graph_2->addGraph();
     ui->graph_2->graph(1)->setData(coord_charged[1], coord_charged[2]);
     ui->graph_2->graph(1)->setPen(QPen(Qt::blue));
     ui->graph_2->graph(1)->setLineStyle(QCPGraph::lsNone);
-    ui->graph_2->graph(1)->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssDisc, 4));
+    ui->graph_2->graph(1)->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssDisc, 3));
 
     ui->graph_2->replot();
 }

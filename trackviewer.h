@@ -36,6 +36,8 @@ protected:
     void test_calibration();
     void draw_strips();
     void test_draw();
+    void triggered_strips();
+    void GetCopyNumber();
 
 private slots:
     void event_switch();
