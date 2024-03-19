@@ -33,11 +33,7 @@ protected:
     void draw_projection(QGraphicsScene* sc, int A, int B, int C, int D, bool flag);
     void draw_strips(QGraphicsScene* scene);
     void strip_number_to_coords();
-    void test_calibration();
     void draw_strips();
-    void test_draw();
-    void triggered_strips();
-    void GetCopyNumber();
 
 private slots:
     void event_switch();
